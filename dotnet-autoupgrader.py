@@ -1,9 +1,11 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 
 def analyze(solution_file: Path):
+    os.chdir(solution_file.parent)
     sys.stdout.write(f'------------------------- Analyzing {solution_file}... -------------------------\n')
     sys.stdout.flush()
 
@@ -21,16 +23,15 @@ def analyze(solution_file: Path):
 
     # Print the output and wait for the analyzer to finish
     while analyzer.poll() is None:
-        out = analyzer.stdout.readline()
-
+        out = analyzer.stdout.readline().rstrip().lstrip()
         # Filter the output
-        if out == '\n' or \
+        if out == '' or \
            out.startswith('-------------') or \
            out.startswith('We are interested in your feedback') or \
            out.startswith('Microsoft .NET Upgrade Assistant v'):
-            out = ''
+            continue
 
-        sys.stdout.write(f'  {out.lstrip()}')
+        sys.stdout.write(f'  {out}\n')
         sys.stdout.flush()
 
     # Check if the analyzing was successful
@@ -40,6 +41,7 @@ def analyze(solution_file: Path):
 
 
 def upgrade(solution_file: Path, do_backup: bool):
+    os.chdir(solution_file.parent)
     sys.stdout.write(f'------------------------- Upgrading {solution_file}... -------------------------\n')
     sys.stdout.flush()
 
@@ -59,14 +61,14 @@ def upgrade(solution_file: Path, do_backup: bool):
     backup_question = False
 
     while upgrader.poll() is None:
-        out = upgrader.stdout.readline()
+        out = upgrader.stdout.readline().rstrip().lstrip()
 
         # filtering
-        if out == '\n' or \
+        if out == '' or \
            out.startswith('-------------') or \
            out.startswith('We are interested in your feedback') or \
            out.startswith('Microsoft .NET Upgrade Assistant v'):
-            out = ''
+            continue
 
         # Check if the user should confirm the current steps completion
         if out.startswith('Please press enter to continue...'):
@@ -89,12 +91,15 @@ def upgrade(solution_file: Path, do_backup: bool):
                 upgrader.stdin.write('1\n')
                 upgrader.stdin.flush()
 
+            backup_question = False
+            next_step_question = False
+
         # Check if the user should confirm the backup location
         if '2. Enter custom path' in out:
             upgrader.stdin.write('1\n')
             upgrader.stdin.flush()
 
-        sys.stdout.write(f'  {out.lstrip()}')
+        sys.stdout.write(f'  {out}\n')
         sys.stdout.flush()
 
     # Check if the analyzing was successful
@@ -109,7 +114,7 @@ def main():
         print(f'Usage: {sys.argv[0]} <solution-path> [--backup] [-y] [-h] [--help]')
         print('  <solution-path>    The path to a solution file or a directory containing one or more solution files')
         print('                     If a directory with multiple solution files is given, all of them will be upgraded')
-        print('  [--no-backup]      If the backup should be created')
+        print('  [--no-backup]      If the single projects should be backed up before upgrading')
         print('  [-y]               Don\'t ask for confirmation before upgrading')
         print('  [-h] [--help]      Show this help message')
         sys.exit(0)
@@ -127,7 +132,7 @@ def main():
     # Check if the solution path is a directory
     if solution_path.is_dir():
         # Get all solution files
-        solution_files = list(solution_path.glob('*.sln'))
+        solution_files = list(solution_path.glob('**/*.sln'))
 
         # Check if there are any solution files
         if len(solution_files) == 0:
@@ -142,9 +147,17 @@ def main():
         # Create a list with the solution file
         solution_files = [solution_path]
 
+    solution_files = [x.resolve() for x in solution_files]
+
+    # Print files
+    print(f'Found {len(solution_files)} solution files:')
+    for file in solution_files:
+        print(f'  {file}')
+    print('\n')
+
     # Analyze all solution files
     for solution_file in solution_files:
-        analyze(solution_file)
+        analyze(solution_file.resolve())
 
     # Check if the user wants to upgrade
     if not auto_confirm:

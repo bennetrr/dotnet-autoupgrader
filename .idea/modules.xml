@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/dotnet_autoupgrader.iml" filepath="$PROJECT_DIR$/.idea/dotnet_autoupgrader.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/dotnet-autoupgrader.iml" filepath="$PROJECT_DIR$/.idea/dotnet-autoupgrader.iml" />
     </modules>
   </component>
 </project>
